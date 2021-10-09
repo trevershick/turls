@@ -1,0 +1,26 @@
+[package]
+name = "turls"
+version = "0.1.0"
+authors = ["Trever Shick <trever.shick@tanium.com>"]
+edition = "2018"
+
+[lib]
+name = "lib_turls"
+path = "src/lib/lib.rs"
+
+[[bin]]
+name = "turls"
+path = "src/bin/app.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bincode = "1.3.3"
+byteorder = "1.4.3"
+lmdb = "0.8.0"
+log = "0.4.14"
+rocket = { version ="0.5.0-rc.1", features=["json"]}
+serde = "1.0.130"
+serde_json = "1.0.68"
+sled = "0.34.7"
+zerocopy = "0.6.0"
