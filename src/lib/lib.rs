@@ -1,11 +1,14 @@
-pub mod model;
-pub mod db;
-
 extern crate serde;
+
+pub mod db;
+pub mod model;
 
 #[derive(Debug)]
 pub enum Error {
-   DbError(String),
+    DbError(String),
+    UrlDoesNotExist(u64),
+    KeywordDoesNotExist(String),
+    KeywordAlreadyExists(String),
 }
 
 impl std::fmt::Display for Error {
@@ -13,16 +16,18 @@ impl std::fmt::Display for Error {
         use Error::*;
         match self {
             DbError(m) => write!(f, "{}", m),
+            KeywordAlreadyExists(kw) => write!(f, "{} already exists", kw),
+            UrlDoesNotExist(id) => write!(f, "{} does not exist", id),
+            KeywordDoesNotExist(kw) => write!(f, "{} does not exist", kw),
         }
     }
 }
 
 impl From<sled::Error> for Error {
-    fn from(e : sled::Error) -> Self {
+    fn from(e: sled::Error) -> Self {
         Error::DbError(e.to_string())
     }
 }
-
 
 // #[cfg(test)]
 // mod tests {

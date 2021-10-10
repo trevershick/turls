@@ -4,9 +4,9 @@ extern crate rocket;
 #[macro_use]
 extern crate serde_json;
 
-// [macro_use]
-extern crate log;
+#[macro_use] extern crate log;
 
+extern crate yansi;
 extern crate bincode;
 extern crate sled;
 
@@ -18,9 +18,12 @@ mod testing;
 
 mod api;
 
+use rocket::log::PaintExt;
+use yansi::Paint;
+
 use rocket::{Rocket,Build,State};
 use rocket::fairing;
-use lib_turls::{db};
+use lib_turls::{db, Error};
 use rocket::response::Redirect;
 use rocket::http::Status;
 
@@ -32,10 +35,13 @@ fn index() -> &'static str {
 #[get("/<keyword>",format="html")]
 fn goto_keyword(db: &State<db::Db>, keyword: &str) -> Result<Redirect,Status> {
     //Redirect::to(uri!("https://rocket.rs/bye", hello(name, age), "?bye#now"))
-    db.find_url_by_keyword(keyword)
-        .map_err(|_e| Status::ServiceUnavailable)?
-        .map(|it | Redirect::temporary(it.to_owned()))
-        .ok_or(Status::NotFound)
+    use Error::*;
+    let url = db.find_url_by_keyword(keyword);
+    match url {
+        Ok(u) => Ok(Redirect::temporary(u.to_owned())),
+        Err(UrlDoesNotExist(_)) => Err(Status::NotFound),
+        Err(_) => Err(Status::ServiceUnavailable),
+    }
 }
 
 #[derive(Debug)]
@@ -56,6 +62,10 @@ impl fairing::Fairing for TurlsDbFairing {
             ..Default::default()
         };
         let db = db::Db::init(&config).unwrap();
+
+        info!("{}{}:", Paint::emoji("🐸 "), Paint::magenta("TurlsDb"));
+        info_!("{}: {}", "path", db.config().path);
+        info_!("{}: {}", "temporary", db.config().temporary);
         Ok(rocket.manage(db))
     }
 }
