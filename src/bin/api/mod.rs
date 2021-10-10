@@ -1,15 +1,18 @@
-mod json;
 mod errors;
+mod json;
+mod validation;
 
-use lib_turls::{db, model::Shortened};
-use rocket::get;
-use rocket::serde::json::Json;
 use errors::JsonApiError;
+use lib_turls::db;
+use lib_turls::model::Shortened;
+use rocket::serde::json::Json;
+use validation::Validated;
 
 pub fn routes() -> Vec<rocket::Route> {
     let mut x: Vec<rocket::Route> = routes![]; //api::index];
     x.extend(routes![get_shortened]);
     x.extend(routes![shorten]);
+    x.extend(routes![expand_keyword]);
     return x;
 }
 
@@ -20,13 +23,26 @@ async fn shorten(
 ) -> Result<Json<Shortened>, JsonApiError> {
     url.validate()?;
 
-    db.insert_url(&url.keyword, &url.url, url.title.as_deref())
-        .map(|s| Json(s))
-        .map_err(|e| JsonApiError::from(e))
+    db.insert_url(
+        url.keyword.as_deref().unwrap(),
+        url.url.as_deref().unwrap(),
+        url.title.as_deref(),
+    )
+    .map(|s| Json(s))
+    .map_err(|e| JsonApiError::from(e))
+}
+
+#[get("/keywords/<keyword>", format = "application/json")]
+async fn expand_keyword( db: &rocket::State<db::Db>, keyword: String) -> Result<Json<String>, JsonApiError> {
+    let url = db.find_url_by_keyword(&keyword)?;
+    Ok(Json(url))
 }
 
 #[get("/urls/<id>", format = "application/json")]
-async fn get_shortened(db: &rocket::State<db::Db>, id: u64) -> Result<Json<Shortened>, JsonApiError> {
+async fn get_shortened(
+    db: &rocket::State<db::Db>,
+    id: u64,
+) -> Result<Json<Shortened>, JsonApiError> {
     let url = db.find_url(id)?;
     Ok(Json(url))
 }
@@ -40,7 +56,7 @@ mod tests {
     use std::env;
 
     fn client(_n: &str) -> Client {
-        let s : String= env::var("CARGO_TARGET_DIR")
+        let s: String = env::var("CARGO_TARGET_DIR")
             .map(|o| o.to_string())
             .ok()
             .unwrap_or(".".to_owned());

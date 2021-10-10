@@ -5,11 +5,14 @@
 Primary 
 ----
 * CRUD
+  * ✅ delete by id
+  * ✅ create url
+    * ✅ fail on dupe 
+    * ✅ validate incoming values
+  * ✅ get by id
+  * search by keyword
+  * ✅ action = expand /api/v1/keywords/<keyword> returns just the url string
   * update - change keyword
-* action = shorturl
-  * fail on dupe
-  * validate incoming values
-* action = expand
 * version
 * auth
 * persistence
