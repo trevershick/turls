@@ -14,17 +14,19 @@ pub fn routes() -> Vec<rocket::Route> {
 }
 
 #[post("/urls", format = "application/json", data = "<url>")]
-fn shorten(
+async fn shorten(
     db: &rocket::State<db::Db>,
     url: Json<json::ShortenedCreate>,
 ) -> Result<Json<Shortened>, JsonApiError> {
+    url.validate()?;
+
     db.insert_url(&url.keyword, &url.url, url.title.as_deref())
         .map(|s| Json(s))
         .map_err(|e| JsonApiError::from(e))
 }
 
 #[get("/urls/<id>", format = "application/json")]
-fn get_shortened(db: &rocket::State<db::Db>, id: u64) -> Result<Json<Shortened>, JsonApiError> {
+async fn get_shortened(db: &rocket::State<db::Db>, id: u64) -> Result<Json<Shortened>, JsonApiError> {
     let url = db.find_url(id)?;
     Ok(Json(url))
 }

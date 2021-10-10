@@ -21,6 +21,7 @@ pub struct IdAndUrl {
     pub id: u64,
     pub url: String,
 }
+
 impl IdAndUrl {
     pub fn to_ivec(self: &Self) -> IVec {
         return serialize(self).expect("should have serialized").into();
