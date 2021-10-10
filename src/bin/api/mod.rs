@@ -4,7 +4,7 @@ mod validation;
 
 use errors::JsonApiError;
 use lib_turls::db;
-use lib_turls::model::Shortened;
+use lib_turls::model;
 use rocket::serde::json::Json;
 use validation::Validated;
 
@@ -12,6 +12,7 @@ pub fn routes() -> Vec<rocket::Route> {
     let mut x: Vec<rocket::Route> = routes![]; //api::index];
     x.extend(routes![get_shortened]);
     x.extend(routes![shorten]);
+    x.extend(routes![search]);
     x.extend(routes![expand_keyword]);
     return x;
 }
@@ -20,7 +21,7 @@ pub fn routes() -> Vec<rocket::Route> {
 async fn shorten(
     db: &rocket::State<db::Db>,
     url: Json<json::ShortenedCreate>,
-) -> Result<Json<Shortened>, JsonApiError> {
+) -> Result<Json<model::Shortened>, JsonApiError> {
     url.validate()?;
 
     db.insert_url(
@@ -33,7 +34,10 @@ async fn shorten(
 }
 
 #[get("/keywords/<keyword>", format = "application/json")]
-async fn expand_keyword( db: &rocket::State<db::Db>, keyword: String) -> Result<Json<String>, JsonApiError> {
+async fn expand_keyword(
+    db: &rocket::State<db::Db>,
+    keyword: String,
+) -> Result<Json<String>, JsonApiError> {
     let url = db.find_url_by_keyword(&keyword)?;
     Ok(Json(url))
 }
@@ -42,9 +46,25 @@ async fn expand_keyword( db: &rocket::State<db::Db>, keyword: String) -> Result<
 async fn get_shortened(
     db: &rocket::State<db::Db>,
     id: u64,
-) -> Result<Json<Shortened>, JsonApiError> {
+) -> Result<Json<model::Shortened>, JsonApiError> {
     let url = db.find_url(id)?;
     Ok(Json(url))
+}
+
+#[get("/search?<p..>", format = "application/json")]
+fn search(
+    db: &rocket::State<db::Db>,
+    p: json::SearchParams,
+) -> Result<Json<json::SearchResults>, JsonApiError> {
+    info!("Search {:?}", p);
+    let sp : model::SearchParams = p.clone().into();
+    let iter : Vec<model::Shortened> = db.search(&sp)?.collect();
+    Ok(Json(json::SearchResults {
+        start: sp.start,
+        end: sp.start + iter.len(),
+        urls: iter,
+        params: p,
+    }))
 }
 
 #[cfg(test)]

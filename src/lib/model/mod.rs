@@ -1,10 +1,10 @@
+mod predicates;
+
 use bincode::{deserialize, serialize};
+use byteorder::BigEndian;
 use serde::{Deserialize, Serialize};
 use sled::IVec;
-use {
-    byteorder::BigEndian,
-    zerocopy::{AsBytes, FromBytes, Unaligned, U64},
-};
+use zerocopy::{AsBytes, FromBytes, Unaligned, U64};
 
 #[warn(dead_code)]
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -20,6 +20,32 @@ pub struct Shortened {
 pub struct IdAndUrl {
     pub id: u64,
     pub url: String,
+}
+
+type FieldName = String;
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub enum SearchCriteria {
+    NoCriteria,
+    TermContainsStr(String),
+    StartsWithStr(FieldName, String),
+    EndsWithStr(FieldName, String),
+    EqualsStr(FieldName, String),
+    And(Box<SearchCriteria>,Box<SearchCriteria>),
+    Or(Box<SearchCriteria>,Box<SearchCriteria>),
+}
+
+impl Default for SearchCriteria {
+    fn default() -> SearchCriteria {
+        SearchCriteria::NoCriteria
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
+pub struct SearchParams {
+    pub start: usize,
+    pub page_size: usize,
+    pub term: String,
+    //pub criteria: SearchCriteria,
 }
 
 impl IdAndUrl {

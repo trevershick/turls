@@ -1,6 +1,7 @@
 mod config;
 
-use crate::model::{IdAndUrl, Shortened};
+use predicates::prelude::*;
+use crate::model::{IdAndUrl, Shortened,SearchParams};
 use crate::Error;
 use sled::Transactional;
 use zerocopy::AsBytes;
@@ -17,9 +18,6 @@ pub struct Db {
 }
 
 impl Db {
-    pub fn config(self: &Self) -> &config::Config {
-        &self.config
-    }
     pub fn init(config: &config::Config) -> Result<Db, Error> {
         let db = sled::Config::new()
             .path(config.path.clone())
@@ -47,6 +45,15 @@ impl Db {
             Some(iv) => Ok(Shortened::from_ivec(iv)),
             None => Err(Error::UrlDoesNotExist(id)),
         }
+    }
+
+    pub fn search(self: &Self, _params: &SearchParams) -> Result<impl Iterator<Item=Shortened>, Error> {
+        let urls = self.db.open_tree(TREE_URLS)?;
+        let predicate : predicates::BoxPredicate<Shortened> = _params.into();
+        Ok(urls.iter().values()
+            .filter(|it| it.is_ok())
+            .map(|result| Shortened::from_ivec(result.unwrap()))
+            .filter(move |it| predicate.eval(&it)))
     }
 
     pub fn delete_url(self: &Self, id: u64) -> Result<bool, Error> {
@@ -106,4 +113,9 @@ impl Db {
             .insert(dbid.as_bytes(), new_shortened.to_ivec())?;
         Ok(new_shortened)
     }
+
+    pub fn config(self: &Self) -> &config::Config {
+        &self.config
+    }
+
 }

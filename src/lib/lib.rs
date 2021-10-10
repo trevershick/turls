@@ -1,4 +1,5 @@
 extern crate serde;
+extern crate predicates;
 
 pub mod db;
 pub mod model;
