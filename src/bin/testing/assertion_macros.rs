@@ -19,3 +19,12 @@ macro_rules! assert_json {
         assert_eq!($x.content_type(), Some(rocket::http::ContentType::JSON));
     };
 }
+#[cfg(test)]
+#[macro_export]
+macro_rules! assert_json_eq {
+    ( $response:expr, $expected:expr ) => {
+        let s = $response.into_string().unwrap();
+        let actual: Value = serde_json::from_str(&s).unwrap();
+        assert_eq!($expected, actual);
+    };
+}

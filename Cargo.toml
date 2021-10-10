@@ -1,8 +1,8 @@
 [package]
+edition = "2018"
 name = "turls"
 version = "0.1.0"
 authors = ["Trever Shick <trever.shick@tanium.com>"]
-edition = "2018"
 
 [lib]
 name = "lib_turls"
@@ -23,4 +23,5 @@ rocket = { version ="0.5.0-rc.1", features=["json"]}
 serde = "1.0.130"
 serde_json = "1.0.68"
 sled = "0.34.7"
+uuid = { version = "0.8.2", features = ["serde", "v4"] }
 zerocopy = "0.6.0"

@@ -1,12 +1,7 @@
-use lib_turls::model;
-use log::{debug, info, warn};
+use lib_turls::{db, model::Shortened};
 use rocket::get;
 use rocket::serde::json::Json;
-use model::Shortened;
 use serde::{Deserialize, Serialize};
-use zerocopy::AsBytes;
-
-const TREE_URLS : &str = "urls";
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct ShortenedCreate {
@@ -22,69 +17,51 @@ pub enum JsonApiError {
     #[response(status = 404, content_type = "json")]
     NotFound(serde_json::Value),
     #[response(status = 500, content_type = "json")]
-    Error(serde_json::Value),
-    #[response(status = 500, content_type = "json")]
-    SimpleError(&'static str),
+    GenericError(serde_json::Value),
+}
+
+impl From<lib_turls::Error> for JsonApiError {
+    fn from(e: lib_turls::Error) -> JsonApiError {
+        JsonApiError::GenericError(json!({ "message": format!("{}", e) }))
+    }
+}
+fn not_found(id: u64) -> JsonApiError {
+    JsonApiError::NotFound(json!({ "id": id, "message": "not found" }))
 }
 
 #[post("/urls", format = "application/json", data = "<url>")]
 pub fn shorten(
-    db: &rocket::State<sled::Db>,
+    db: &rocket::State<db::Db>,
     url: Json<ShortenedCreate>,
 ) -> Result<Json<Shortened>, JsonApiError> {
-    let new_shortened = Shortened {
-        id: db.generate_id().unwrap(),
-        keyword: url.keyword.clone(),
-        title: url.title.clone(),
-        url: url.url.clone(),
-    };
-    debug!("New Shortened Url: {:?}", new_shortened);
-    let dbid = Shortened::db_id(new_shortened.id);
-    let data = new_shortened.to_ivec();
-    debug!("Data size to insert is {}", data.iter().len());
-    db.open_tree(TREE_URLS)
-        .expect("should open db")
-        .insert(dbid.as_bytes(), data)
-        .expect("Should have inserted");
-    Ok(Json(new_shortened))
+    db.insert_url(&url.keyword, &url.url, url.title.as_deref())
+        .map(|s| Json(s))
+        .map_err(|e| JsonApiError::from(e))
 }
 
 #[get("/urls/<id>", format = "application/json")]
-pub fn get_shortened(
-    db: &rocket::State<sled::Db>,
-    id: u64,
-) -> Result<Json<Shortened>, JsonApiError> {
-    let dbid = Shortened::db_id(id);
-    debug!("Searching for {}", dbid);
-    let record = match db.open_tree(TREE_URLS)
-        .expect("db should open")
-        .get(dbid.as_bytes()) {
-            Ok(r) => r,
-            Err(e) => {
-                return Result::Err( JsonApiError::Error(json!({ "error": e.to_string() })));
-            }
-        };
-
-    match record {
-        Some(ivec) => Ok(Json(Shortened::from(ivec))),
-        None => Result::Err(JsonApiError::NotFound(
-            json!({ "id": id, "message": "not found"}),
-        )),
-    }
+pub fn get_shortened(db: &rocket::State<db::Db>, id: u64) -> Result<Json<Shortened>, JsonApiError> {
+    db.find_url(id)
+        .map_err(|e| JsonApiError::from(e))?
+        .map(Json)
+        .ok_or(not_found(id))
 }
 
 #[cfg(test)]
 mod tests {
+    use lib_turls::db::{Config, Db};
     use rocket;
     use rocket::http::{ContentType, Status};
     use rocket::local::blocking::Client;
     use serde_json::Value;
 
-    fn client(n: &str) -> Client {
-        let sleddb = sled::Config::new().path(n).temporary(true).open().unwrap();
-        let rocket = rocket::build()
-            .mount("/", crate::api::routes())
-            .manage(sleddb);
+    fn client(_n: &str) -> Client {
+        let config = Config {
+            path: uuid::Uuid::new_v4().to_string(),
+            temporary: true,
+        };
+        let db = Db::init(&config).expect("init");
+        let rocket = rocket::build().manage(db).mount("/", crate::api::routes());
         Client::tracked(rocket).unwrap()
     }
 
@@ -106,24 +83,18 @@ mod tests {
         let pr = client
             .post("/urls")
             .header(ContentType::JSON)
-            .body(
-                json!({
-                    "keyword": "k1",
-                    "url": "u1",
-                })
-                .to_string(),
-            )
+            .body(json!({ "keyword": "k1", "url": "u1" }).to_string())
             .dispatch();
         assert_ok!(pr);
 
+        let expected = json!({ 
+            "id": 0,
+            "title": Option::<String>::None, 
+            "keyword": "k1", 
+            "url": "u1" });
         let response = client.get("/urls/0").header(ContentType::JSON).dispatch();
         assert_ok!(response);
         assert_json!(response);
-        //let s = response.into_string().unwrap();
-        //let json: Value = serde_json::from_str(&s).unwrap();
-        //assert_eq!(json["id"], 1);
-        //assert_eq!(json["title"], "t");
-        //assert_eq!(json["url"], "https://google.com");
-        //assert_eq!(json["keyword"], "key");
+        assert_json_eq!(response, expected);
     }
 }

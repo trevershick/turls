@@ -7,6 +7,7 @@ use {
 };
 
 
+
 #[warn(dead_code)]
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct Shortened {
@@ -14,21 +15,13 @@ pub struct Shortened {
     pub keyword: String,
     pub url: String,
     pub title: Option<String>,
-    /* created */
 }
+
 impl Shortened {
     pub fn db_id(id: u64) -> U64<BigEndian> {
         id.into()
     }
-}
 
-//impl std::convert::From<Vec<u8>> for Shortened {
-//    fn from(data: Vec<u8>) -> Shortened {
-//        let entity: Result<Shortened,_> = deserialize(&data[..]);
-//        return entity.expect("should have deserialized");
-//    }
-//}
-impl Shortened {
     pub fn to_ivec(self: &Self) -> IVec {
         //let entity: Result<Shortened,_> = deserialize(&data[..]);
         //return entity.expect("should have deserialized");
