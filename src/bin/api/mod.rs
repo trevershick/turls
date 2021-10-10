@@ -5,12 +5,14 @@ mod validation;
 use errors::JsonApiError;
 use lib_turls::db;
 use lib_turls::model;
+use metrics::counter;
 use rocket::serde::json::Json;
 use validation::Validated;
 
 pub fn routes() -> Vec<rocket::Route> {
     let mut x: Vec<rocket::Route> = routes![]; //api::index];
     x.extend(routes![get_shortened]);
+    x.extend(routes![delete_shortened]);
     x.extend(routes![shorten]);
     x.extend(routes![search]);
     x.extend(routes![expand_keyword]);
@@ -42,6 +44,12 @@ async fn expand_keyword(
     Ok(Json(url))
 }
 
+#[delete("/urls/<id>", format = "application/json")]
+async fn delete_shortened(db: &rocket::State<db::Db>, id: u64) -> Result<Json<bool>, JsonApiError> {
+    let deleted = db.delete_url(id)?;
+    Ok(Json(deleted))
+}
+
 #[get("/urls/<id>", format = "application/json")]
 async fn get_shortened(
     db: &rocket::State<db::Db>,
@@ -57,14 +65,17 @@ fn search(
     p: json::SearchParams,
 ) -> Result<Json<json::SearchResults>, JsonApiError> {
     info!("Search {:?}", p);
-    let sp : model::SearchParams = p.clone().into();
-    let iter : Vec<model::Shortened> = db.search(&sp)?.collect();
-    Ok(Json(json::SearchResults {
+    let sp: model::SearchParams = p.clone().into();
+    let iter: Vec<model::Shortened> = db.search(&sp)?.collect();
+    let l: usize = iter.len();
+    let result = json::SearchResults {
         start: sp.start,
-        end: sp.start + iter.len(),
+        end: sp.start + l,
         urls: iter,
         params: p,
-    }))
+    };
+    counter!("route_result_count", l as u64, "route"=> "search");
+    Ok(Json(result))
 }
 
 #[cfg(test)]

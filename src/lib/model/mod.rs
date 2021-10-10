@@ -30,8 +30,8 @@ pub enum SearchCriteria {
     StartsWithStr(FieldName, String),
     EndsWithStr(FieldName, String),
     EqualsStr(FieldName, String),
-    And(Box<SearchCriteria>,Box<SearchCriteria>),
-    Or(Box<SearchCriteria>,Box<SearchCriteria>),
+    And(Box<SearchCriteria>, Box<SearchCriteria>),
+    Or(Box<SearchCriteria>, Box<SearchCriteria>),
 }
 
 impl Default for SearchCriteria {

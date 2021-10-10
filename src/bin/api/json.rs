@@ -5,7 +5,7 @@ use std::vec::Vec;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct SearchResults {
-    pub params: SearchParams ,
+    pub params: SearchParams,
     pub start: usize,
     pub end: usize,
     pub urls: Vec<model::Shortened>,
@@ -18,7 +18,6 @@ pub struct SearchParams {
     // genereric term search
     pub term: Option<String>,
 }
-
 
 impl From<SearchParams> for model::SearchParams {
     fn from(s: SearchParams) -> Self {

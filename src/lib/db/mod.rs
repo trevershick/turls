@@ -1,8 +1,8 @@
 mod config;
 
-use predicates::prelude::*;
-use crate::model::{IdAndUrl, Shortened,SearchParams};
+use crate::model::{IdAndUrl, SearchParams, Shortened};
 use crate::Error;
+use predicates::prelude::*;
 use sled::Transactional;
 use zerocopy::AsBytes;
 
@@ -23,7 +23,10 @@ impl Db {
             .path(config.path.clone())
             .temporary(config.temporary)
             .open()?;
-        Ok(Db { db, config: config.clone() })
+        Ok(Db {
+            db,
+            config: config.clone(),
+        })
     }
 
     fn find_idandurl_by_keyword(self: &Self, keyword: &str) -> Result<IdAndUrl, Error> {
@@ -47,10 +50,15 @@ impl Db {
         }
     }
 
-    pub fn search(self: &Self, _params: &SearchParams) -> Result<impl Iterator<Item=Shortened>, Error> {
+    pub fn search(
+        self: &Self,
+        _params: &SearchParams,
+    ) -> Result<impl Iterator<Item = Shortened>, Error> {
         let urls = self.db.open_tree(TREE_URLS)?;
-        let predicate : predicates::BoxPredicate<Shortened> = _params.into();
-        Ok(urls.iter().values()
+        let predicate: predicates::BoxPredicate<Shortened> = _params.into();
+        Ok(urls
+            .iter()
+            .values()
             .filter(|it| it.is_ok())
             .map(|result| Shortened::from_ivec(result.unwrap()))
             .filter(move |it| predicate.eval(&it)))
@@ -117,5 +125,4 @@ impl Db {
     pub fn config(self: &Self) -> &config::Config {
         &self.config
     }
-
 }
