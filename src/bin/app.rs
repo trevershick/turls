@@ -71,10 +71,11 @@ impl fairing::Fairing for TurlsDbFairing {
             ..Default::default()
         };
         let db = db::Db::init(&config).unwrap();
+        let config = db.config();
 
         info!("{}{}:", Paint::emoji("🐸 "), Paint::magenta("TurlsDb"));
-        info_!("{}: {}", "path", db.config().path);
-        info_!("{}: {}", "temporary", db.config().temporary);
+        info_!("{}: {}", "path", config.path);
+        info_!("{}: {}", "temporary", config.temporary);
         Ok(rocket.manage(db))
     }
 }
